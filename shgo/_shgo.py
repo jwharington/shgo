@@ -12,6 +12,7 @@ from scipy.optimize import OptimizeResult, minimize, Bounds
 from scipy.optimize._optimize import MemoizeJac
 from scipy.optimize._constraints import new_bounds_to_old
 from scipy.optimize._minimize import standardize_constraints
+from cyipopt import minimize_ipopt, CyIpoptEvaluationError
 from scipy._lib._util import _FunctionWrapper
 
 #from scipy.optimize._shgo_lib._complex import Complex
@@ -586,7 +587,7 @@ class SHGO:
 
         if (
             self.minimizer_kwargs['method'].lower() in ('slsqp', 'cobyla',
-                                                        'cobyqa',
+                                                        'cobyqa', 'ipopt',
                                                         'trust-constr')
             and (
                 minimizer_kwargs is not None and
@@ -638,6 +639,7 @@ class SHGO:
             'tnc': ['jac', 'bounds'],
             'cobyla': ['constraints', 'catol'],
             'cobyqa': ['bounds', 'constraints', 'feasibility_tol'],
+            'ipopt': ['bounds', 'constraints'],
             'slsqp': ['jac', 'bounds', 'constraints'],
             'dogleg': ['jac', 'hess'],
             'trust-ncg': ['jac', 'hess', 'hessp'],
@@ -1372,7 +1374,14 @@ class SHGO:
             logging.info(self.minimizer_kwargs['bounds'])
 
         # Local minimization using scipy.optimize.minimize:
-        lres = minimize(self.func, x_min, **self.minimizer_kwargs)
+        if (
+            "method" in self.minimizer_kwargs
+            and self.minimizer_kwargs["method"] == "ipopt"
+        ):
+            kwargs = {k: v for k, v in self.minimizer_kwargs.items() if k != "method"}
+            lres = minimize_ipopt(self.func, x_min, **kwargs)
+        else:
+            lres = minimize(self.func, x_min, **self.minimizer_kwargs)
 
         if self.disp:
             logging.info(f'lres = {lres}')

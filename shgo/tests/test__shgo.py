@@ -1163,3 +1163,27 @@ def test_gh16971():
 
     assert s.minimizer_kwargs['method'].lower() == 'cobyla'
     assert s.minimizer_kwargs['options']['catol'] == 0.05
+
+
+def test_ipopt():
+
+    def cons(x):
+        return np.sum(x**2) - 3
+
+    def fun(x):
+        fun.nfev += 1
+        return rosen(x)
+
+    fun.nfev = 0
+
+    c = {"fun": cons, "type": "ineq"}
+    minimizer_kwargs = {"method": "ipopt", "options": {"tol": 1e-5}, "constraints": c}
+
+    result = shgo(
+        fun,
+        bounds=[(0, 10)] * 2,
+        constraints=c,
+        sampling_method="sobol",
+        minimizer_kwargs=minimizer_kwargs,
+    )
+    logging.critical(f"{result.x}, {result.fun}, {fun.nfev}")  # 50
